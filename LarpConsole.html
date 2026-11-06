@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e0b0c">
+<title>LarpBlox</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2096%2096%22%3E%3Cpath%20fill%3D%22%238e1426%22%20d%3D%22m12%2029%2023-15%2046%209%204%2047-23%2015-46-9z%22%2F%3E%3Cpath%20fill%3D%22%23ff5967%22%20d%3D%22m12%2029%2023-15%2046%209-23%2015z%22%2F%3E%3Cpath%20fill%3D%22%23ed293d%22%20d%3D%22m12%2029%2046%209%204%2047-46-9z%22%2F%3E%3Cpath%20fill%3D%22%231a080c%22%20d%3D%22m20%2043%2031%206%202%2018-31-6z%22%2F%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22m26%2048%205%201%201%206-5-1zm13%202%205%201%201%206-5-1z%22%2F%3E%3C%2Fsvg%3E">
+<style>
+:root{color-scheme:dark;--accent:#ed293d;--accent2:#ff5967;--bg:#0e0b0c;--panel:#171214;--panel2:#1f181a;--line:#2b2124;--line2:#3a2c30;--text:#f2ecee;--dim:#a08f94;--faint:#6b5a5f;--ok:#3ecf8e;--warn:#f5b041;--bad:#ff5c6c;--mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+main{max-width:480px;margin:auto;padding:max(16px,env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom))}
+
+/* Blox card */
+.guide{display:flex;gap:14px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px 14px 6px;margin-bottom:14px;position:relative;overflow:hidden}
+.av{width:112px;height:104px;flex:none;cursor:pointer;position:relative;touch-action:manipulation}
+.av svg{width:100%;height:100%;overflow:visible;display:block}
+.guide .say{flex:1;min-width:0}
+.guide .who{font:700 16px system-ui;color:var(--accent2);display:flex;gap:6px;align-items:center}
+.guide .who i{font-style:normal;color:var(--faint);font-weight:400}
+.guide p{margin:4px 0 0;font:15px/1.5 system-ui;color:var(--text)}
+#tip{transition:opacity .25s}
+
+/* poses */
+.pose{opacity:0;transition:opacity .25s}
+.av[data-pose=game] .p-game,.av[data-pose=selfie] .p-selfie{opacity:1}
+.bodyg{transform-box:fill-box;transform-origin:50% 90%;transition:transform .35s cubic-bezier(.3,1.4,.5,1)}
+.av[data-pose=idle] .bodyg{animation:breathe 3s ease-in-out infinite}
+.av[data-pose=game] .bodyg{transform:rotate(4deg) translateY(4px)}
+.av[data-pose=game] .rig{animation:thumbs .28s ease-in-out infinite}
+.av[data-pose=game] .scr{animation:scr .5s steps(2) infinite}
+.av[data-pose=selfie] .bodyg{transform:rotate(5deg)}
+.av[data-pose=selfie] .flash{animation:flash 2.2s ease-out 1s 2}
+.av[data-pose=wave] .bodyg{animation:wave .35s ease-in-out 4}
+.av[data-pose=jump] .bodyg{animation:jump .5s ease-out 2}
+.eyes{transform-box:fill-box;transform-origin:center;animation:blink 4s infinite}
+.av[data-pose=game] .eyes{transform:translateY(3px)}
+.av[data-pose=selfie] .eyes{transform:translate(-2px,-3px)}
+@keyframes breathe{50%{transform:scale(1.02,.97)}}
+@keyframes thumbs{50%{transform:translateY(1.5px)}}
+@keyframes scr{50%{fill:#ff5967}}
+@keyframes flash{0%,100%{opacity:0}6%{opacity:1}20%{opacity:0}}
+@keyframes wave{50%{transform:rotate(-10deg)}}
+@keyframes jump{50%{transform:translateY(-14px)}90%{transform:scale(1.08,.9)}}
+@keyframes blink{0%,94%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+
+/* stats */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.stat b{display:block;font:600 18px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stat small{color:var(--dim);font-size:12px}
+.stat.hi b{color:var(--accent2)}
+
+/* panels */
+section{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px}
+h2{margin:0 0 2px;font:700 17px system-ui}
+.sub{color:var(--dim);font-size:13px;margin:0 0 14px}
+form{display:grid;gap:12px}
+label{display:grid;gap:5px;font:600 13px system-ui;color:var(--dim)}
+input,select{font:16px system-ui;color:var(--text);background:var(--bg);border:1px solid var(--line2);border-radius:10px;padding:10px 12px;min-height:46px;min-width:0;width:100%}
+input:focus,select:focus{outline:none;border-color:var(--accent)}
+input::placeholder{color:var(--faint)}
+button{font:inherit;cursor:pointer}
+.primary{background:var(--accent);color:#fff;border:0;border-radius:10px;min-height:48px;font:600 15px system-ui}
+.primary:active{background:#c21c30}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+ul{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:8px}
+li{display:grid;grid-template-columns:1fr auto;gap:8px 10px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;overflow-wrap:anywhere;animation:in .2s ease}
+li .main b{font-weight:600;font-size:14.5px}
+li .main small{display:block;color:var(--dim);font:12px var(--mono)}
+li.empty{display:block;text-align:center;color:var(--faint);font:13px var(--mono);background:none;border-style:dashed;padding:20px}
+.acts{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.acts button{background:none;border:1px solid var(--line2);color:var(--dim);border-radius:8px;font:12.5px var(--mono);padding:7px 11px;min-height:34px}
+.acts button:active{color:var(--text);border-color:var(--faint)}
+.acts button.del{margin-left:auto}.acts button.del:active{color:var(--bad);border-color:var(--bad)}
+.tag{font:11px var(--mono);padding:2px 8px;border-radius:99px;border:1px solid;white-space:nowrap}
+.tag.Pending{color:var(--warn)}.tag.Accepted{color:var(--ok)}.tag.Declined{color:var(--bad)}.tag.eq{color:var(--accent2)}
+details{border-top:1px solid var(--line);padding:12px 0}
+details:first-of-type{border-top:0}
+summary{cursor:pointer;font:600 14px var(--mono)}
+details p{color:var(--dim);font-size:14px;margin:8px 0 0}
+
+/* bottom tab bar */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--bg);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));display:flex;justify-content:center}
+nav .in{display:grid;grid-template-columns:repeat(5,1fr);width:100%;max-width:480px}
+nav button{all:unset;cursor:pointer;text-align:center;padding:6px 0 4px;color:var(--faint);font:11px var(--mono);border-radius:10px}
+nav button span{display:block;font:700 15px var(--mono);margin-bottom:1px}
+nav button[aria-selected=true]{color:var(--text);background:var(--panel2)}
+nav button[aria-selected=true] span{color:var(--accent)}
+nav button:focus-visible{outline:2px solid var(--accent)}
+
+.toast{position:fixed;left:50%;top:max(12px,env(safe-area-inset-top));transform:translate(-50%,-90px);background:var(--panel2);border:1px solid var(--line2);border-radius:12px;padding:10px 16px;font:13px var(--mono);transition:transform .25s;z-index:20;max-width:calc(100% - 32px)}
+.toast.show{transform:translate(-50%,0)}.toast.err{border-color:var(--bad)}
+@keyframes in{from{opacity:0;transform:translateY(-3px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head>
+<body>
+<main>
+<aside class="guide" aria-label="Tips">
+  <div class="av" id="av" data-pose="idle" role="button" tabindex="0" aria-label="Poke Red">
+    <svg viewBox="-8 -10 120 112" aria-hidden="true">
+      <g class="bodyg">
+        <path fill="#8e1426" d="m12 29 23-15 46 9 4 47-23 15-46-9z"/>
+        <path fill="#ff5967" d="m12 29 23-15 46 9-23 15z"/>
+        <path fill="#ed293d" d="m12 29 46 9 4 47-46-9z"/>
+        <path fill="#1a080c" d="m20 43 31 6 2 18-31-6z"/>
+        <path class="eyes" fill="#fff" d="m26 48 5 1 1 6-5-1zm13 2 5 1 1 6-5-1z"/>
+        <path fill="#ff8a94" d="m27 66 13 2 1 4-13-2z"/>
+        <path fill="#ff5967" d="m8 18 4-6 4 6 6 4-6 4-4 6-4-6-6-4z"/>
+      </g>
+      <!-- selfie: arm up in front, we see the back of the phone -->
+      <g class="pose p-selfie">
+        <path d="M34 70 L14 26" stroke="#c21c30" stroke-width="6" stroke-linecap="round"/>
+        <g transform="rotate(-12 12 14)">
+          <rect x="4" y="0" width="16" height="27" rx="3.5" fill="#2a2a30" stroke="#4a4a52" stroke-width="1.5"/>
+          <circle cx="9" cy="5" r="2.2" fill="#0c0c0e" stroke="#666" stroke-width=".8"/>
+          <circle class="flash" cx="15" cy="5" r="2" fill="#fff" opacity="0"/>
+        </g>
+        <rect x="7" y="22" width="10" height="9" rx="3.5" fill="#ed293d"/>
+      </g>
+      <!-- gaming: small phone held sideways in both hands -->
+      <g class="pose p-game">
+        <g class="rig">
+          <rect x="22" y="76" width="38" height="16" rx="3.5" fill="#1b1b1f" stroke="#4a4a52" stroke-width="1.5"/>
+          <rect class="scr" x="27" y="79" width="28" height="10" rx="1" fill="#6cf"/>
+          <rect x="16" y="77" width="9" height="13" rx="3.5" fill="#ed293d"/>
+          <rect x="57" y="77" width="9" height="13" rx="3.5" fill="#ed293d"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+  <div class="say">
+    <div class="who">Red</div>
+    <p aria-live="polite"><span id="tip"></span></p>
+  </div>
+</aside>
+
+<div class="stats">
+  <div class="stat"><b id="sUser">—</b><small>Profile</small></div>
+  <div class="stat hi"><b id="sRobux">0</b><small>Fake Robux</small></div>
+  <div class="stat"><b id="sItems">0</b><small>Items</small></div>
+  <div class="stat"><b id="sTrades">0</b><small>Open trades</small></div>
+</div>
+
+<section id="panel-profile" role="tabpanel" aria-labelledby="tab-profile">
+  <h2>Profile</h2><p class="sub">Name and balance shown across LarpBlox.</p>
+  <form id="profile">
+    <label>Username<input name="username" maxlength="40" placeholder="builderman" autocapitalize="off" autocomplete="off"></label>
+    <label>Display name<input name="display" maxlength="60" placeholder="Builder"></label>
+    <label>Fake Robux<input name="robux" inputmode="numeric" pattern="[0-9]{1,18}" required></label>
+    <button class="primary" type="submit">Save profile</button>
+  </form>
+</section>
+
+<section id="panel-games" role="tabpanel" aria-labelledby="tab-games">
+  <h2>Games</h2><p class="sub">Places and experiences on your profile.</p>
+  <form id="games">
+    <div class="row2">
+      <label>ID type<select name="kind"><option value="place">Place</option><option value="universe">Universe</option></select></label>
+      <label>ID<input name="id" inputmode="numeric" pattern="[0-9]{1,24}" required placeholder="1818"></label>
+    </div>
+    <label>Title (optional)<input name="title" maxlength="100" placeholder="Crossroads"></label>
+    <button class="primary" type="submit">Add game</button>
+  </form>
+  <ul id="gamesList"></ul>
+</section>
+
+<section id="panel-items" role="tabpanel" aria-labelledby="tab-items">
+  <h2>Inventory</h2><p class="sub">Buy with fake Robux, then equip.</p>
+  <form id="items">
+    <label>Item name<input name="name" maxlength="100" required placeholder="Dominus Empyreus"></label>
+    <label>Price<input name="price" inputmode="numeric" pattern="[0-9]{1,18}" value="0" required></label>
+    <button class="primary" type="submit">Buy item</button>
+  </form>
+  <ul id="itemsList"></ul>
+</section>
+
+<section id="panel-trades" role="tabpanel" aria-labelledby="tab-trades">
+  <h2>Trades</h2><p class="sub">Log trades and update their status.</p>
+  <form id="trades">
+    <div class="row2">
+      <label>With user<input name="user" maxlength="40" required placeholder="username" autocapitalize="off"></label>
+      <label>Status<select name="status"><option>Pending</option><option>Accepted</option><option>Declined</option></select></label>
+    </div>
+    <label>You give<input name="give" maxlength="200" required></label>
+    <label>You get<input name="receive" maxlength="200" required></label>
+    <button class="primary" type="submit">Save trade</button>
+  </form>
+  <ul id="tradesList"></ul>
+</section>
+
+<section id="panel-help" role="tabpanel" aria-labelledby="tab-help">
+  <h2>Help</h2><p class="sub">Common questions.</p>
+  <details open><summary>Open on iPhone</summary><p>In the iOS overlay, swipe down with three fingers. Tap Close to return.</p></details>
+  <details><summary>Where is data stored?</summary><p>Everything stays on this device.</p></details>
+  <details><summary>How trades work</summary><p>Enter both sides, pick a status, and change it later from the list.</p></details>
+  <details><summary>Red</summary><p>Tap him for a new tip.</p></details>
+</section>
+</main>
+
+<nav aria-label="Console sections"><div class="in" role="tablist">
+  <button type="button" role="tab" id="tab-profile" aria-controls="panel-profile" aria-selected="true"><span>01</span>profile</button>
+  <button type="button" role="tab" id="tab-games" aria-controls="panel-games" aria-selected="false"><span>02</span>games</button>
+  <button type="button" role="tab" id="tab-items" aria-controls="panel-items" aria-selected="false"><span>03</span>items</button>
+  <button type="button" role="tab" id="tab-trades" aria-controls="panel-trades" aria-selected="false"><span>04</span>trades</button>
+  <button type="button" role="tab" id="tab-help" aria-controls="panel-help" aria-selected="false"><span>05</span>help</button>
+</div></nav>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const key='larp-console-v1';
+const initial={profile:{username:'',display:'',robux:'0'},games:[],items:[],trades:[]};
+const $=id=>document.getElementById(id);
+let state=initial;
+try{state={...initial,...JSON.parse(localStorage.getItem(key))}}catch{}
+if(!/^\d+$/.test(state.profile.robux))state.profile={...state.profile,robux:'0'};
+
+let toastT;
+function toast(msg,err){const t=$('toast');t.textContent=msg;t.className='toast show'+(err?' err':'');clearTimeout(toastT);toastT=setTimeout(()=>t.className='toast',2200)}
+function commit(next){
+  try{localStorage.setItem(key,JSON.stringify(next))}catch{toast('Could not save on this device',1);return false}
+  state=next;render();return true;
+}
+function bind(id,cb){
+  const form=$(id);
+  form.addEventListener('submit',e=>{
+    e.preventDefault();
+    const f=Object.fromEntries(new FormData(form));
+    for(const k in f){f[k]=f[k].trim();if(form.elements[k].required&&!f[k]){toast('Fill in the required fields',1);form.elements[k].focus();return}}
+    if(cb(f)&&id!=='profile')form.reset();
+  });
+}
+const add=(k,item)=>commit({...state,[k]:[...state[k],item]});
+function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
+function renderList(k,describe,actions,emptyText){
+  const list=$(k+'List');list.replaceChildren();
+  if(!state[k].length){list.append(el('li','empty',emptyText));return}
+  state[k].forEach((item,i)=>{
+    const [title,meta,tag]=describe(item);
+    const row=el('li'),main=el('div','main');
+    main.append(el('b',null,title));if(meta)main.append(el('small',null,meta));
+    row.append(main,tag||el('span'));
+    const acts=el('div','acts');
+    const btn=(label,fn,cls)=>{const b=el('button',cls,label);b.type='button';b.onclick=fn;acts.append(b)};
+    actions&&actions(item,i,btn);
+    btn('delete',()=>{commit({...state,[k]:state[k].filter((_,j)=>j!==i)});toast('Removed')},'del');
+    row.append(acts);list.append(row);
+  });
+}
+const fmt=n=>BigInt(n).toLocaleString();
+function render(){
+  const p=state.profile;
+  $('sUser').textContent=p.display||(p.username?'@'+p.username:'—');
+  $('sRobux').textContent=fmt(p.robux);
+  $('sItems').textContent=state.items.length;
+  $('sTrades').textContent=state.trades.filter(t=>t.status==='Pending').length;
+  renderList('games',g=>[g.title||'Untitled game',`${g.kind} · ${g.id}`],null,'no games yet');
+  renderList('items',it=>[it.name,null,it.equipped?el('span','tag eq','equipped'):null],(it,i,btn)=>
+    btn(it.equipped?'unequip':'equip',()=>commit({...state,items:state.items.map((e,j)=>j===i?{...e,equipped:!e.equipped}:e)})),'inventory is empty');
+  renderList('trades',t=>['@'+t.user,`give ${t.give} → get ${t.receive}`,el('span','tag '+t.status,t.status.toLowerCase())],(t,i,btn)=>{
+    for(const s of['Pending','Accepted','Declined'])if(s!==t.status)btn(s.toLowerCase(),()=>commit({...state,trades:state.trades.map((e,j)=>j===i?{...e,status:s}:e)}));
+  },'no trades logged');
+}
+for(const [f,v] of Object.entries(state.profile))$('profile').elements[f].value=v;
+
+/* tips */
+const tips={
+  profile:['Set up your profile, then add games in 02.','Set a Robux balance before buying items.','Display name shows in the stats; username gets an @.'],
+  games:['Place is one place; Universe is the whole experience.','Add a title so long IDs are easy to spot.','Duplicate IDs of the same type are skipped.'],
+  items:['Price 0 adds an item for free.','Buying takes Robux off your balance.','Equip tags an item in your wardrobe.'],
+  trades:["Change a trade's status from the buttons on its row.",'Only pending trades count in the stats.'],
+  help:['Tap Red for another tip.','Everything you enter stays on this phone.']
+};
+const tabs=[...document.querySelectorAll('[role=tab]')];
+let active='profile',tipI=0;
+function showTip(){const t=$('tip');t.style.opacity=0;setTimeout(()=>{t.textContent=tips[active][tipI];t.style.opacity=1},150)}
+function nextTip(){tipI=(tipI+1)%tips[active].length;showTip()}
+function selectTab(tab){
+  active=tab.id.slice(4);
+  for(const t of tabs){const s=t===tab;t.setAttribute('aria-selected',s);t.tabIndex=s?0:-1;$(t.getAttribute('aria-controls')).hidden=!s}
+  tipI=0;showTip();scrollTo({top:0,behavior:'smooth'});
+}
+tabs.forEach((tab,i)=>{
+  tab.onclick=()=>selectTab(tab);
+  tab.onkeydown=e=>{const n={ArrowRight:(i+1)%tabs.length,ArrowLeft:(i+tabs.length-1)%tabs.length}[e.key];if(n===undefined)return;e.preventDefault();tabs[n].focus();selectTab(tabs[n])};
+});
+setInterval(nextTip,12000);
+
+/* Blox poses: stays in his card, cycles idle → gaming → selfie */
+const blox=(()=>{
+  const av=$('av');
+  const labels={idle:'idle',game:'gaming',selfie:'taking a selfie',wave:'waving',jump:'hyped'};
+  let timer,seq=0;
+  const cycle=['idle','game','idle','selfie','idle','game','idle','wave'];
+  const dur={idle:2200,game:6000,selfie:5000,wave:1600,jump:1100};
+  function pose(p){av.dataset.pose='';void av.offsetWidth;av.dataset.pose=p}
+  function loop(){clearTimeout(timer);const p=cycle[seq++%cycle.length];pose(p);timer=setTimeout(loop,dur[p])}
+  function react(p){clearTimeout(timer);pose(p);timer=setTimeout(loop,dur[p]||2000)}
+  av.addEventListener('click',()=>{nextTip();react('jump')});
+  av.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();av.click()}});
+  loop();
+  return {react};
+})();
+
+bind('profile',f=>{const ok=commit({...state,profile:f});if(ok){toast('Profile saved');blox.react('wave')}return ok});
+bind('games',g=>{
+  if(state.games.some(e=>e.kind===g.kind&&BigInt(e.id)===BigInt(g.id))){toast('Already on the list',1);return false}
+  const ok=add('games',g);if(ok){toast('Game added');blox.react('game')}return ok;
+});
+bind('items',({name,price})=>{
+  const bal=BigInt(state.profile.robux)-BigInt(price);
+  if(bal<0n){toast(`Need ${fmt(-bal)} more Robux`,1);return false}
+  const ok=commit({...state,profile:{...state.profile,robux:String(bal)},items:[...state.items,{name,equipped:false}]});
+  if(ok){$('profile').elements.robux.value=String(bal);toast(`Bought ${name}`);blox.react('selfie')}
+  return ok;
+});
+bind('trades',t=>{const ok=add('trades',t);if(ok){toast('Trade saved');blox.react('jump')}return ok});
+selectTab(tabs[0]);render();
+</script>
+</body></html>
