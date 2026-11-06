@@ -127,13 +127,45 @@ static UIImage *MoreMascot(void) {
     }
 }
 
+#if LARPBLOX_DIAGNOSTICS
+- (UIButton *)diagnosticButtonInWindow:(UIWindow *)window {
+    static const NSInteger diagnosticTag = 0x4C425844;
+    UIButton *button = (UIButton *)[window viewWithTag:diagnosticTag];
+    if (!button) {
+        button = [UIButton buttonWithType:UIButtonTypeSystem];
+        button.tag = diagnosticTag;
+        button.translatesAutoresizingMaskIntoConstraints = NO;
+        button.backgroundColor = UIColor.blackColor;
+        button.layer.cornerRadius = 8;
+        button.titleLabel.font = [UIFont monospacedSystemFontOfSize:13 weight:UIFontWeightSemibold];
+        [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+        [button addTarget:self action:@selector(openFromSettings:) forControlEvents:UIControlEventTouchUpInside];
+        [window addSubview:button];
+        [NSLayoutConstraint activateConstraints:@[
+            [button.topAnchor constraintEqualToAnchor:window.safeAreaLayoutGuide.topAnchor constant:8],
+            [button.centerXAnchor constraintEqualToAnchor:window.centerXAnchor],
+            [button.heightAnchor constraintEqualToConstant:44],
+            [button.widthAnchor constraintEqualToConstant:174]
+        ]];
+    }
+    [window bringSubviewToFront:button];
+    return button;
+}
+#endif
+
 - (void)refreshMoreTileInWindow:(UIWindow *)window {
+#if LARPBLOX_DIAGNOSTICS
+    UIButton *diagnostic = [self diagnosticButtonInWindow:window];
+#endif
     static const NSInteger tileTag = 0x4C425854;
     UIButton *tile = (UIButton *)[window viewWithTag:tileTag];
     UIViewController *root = window.rootViewController;
     while (root.presentedViewController) root = root.presentedViewController;
     if (!root || [root.view.accessibilityIdentifier isEqualToString:@"LarpOverlay"]) {
         tile.hidden = YES;
+#if LARPBLOX_DIAGNOSTICS
+        diagnostic.hidden = YES;
+#endif
         return;
     }
 
@@ -141,6 +173,11 @@ static UIImage *MoreMascot(void) {
     NSUInteger remaining = 2400;
     NSHashTable *visited = [NSHashTable hashTableWithOptions:NSPointerFunctionsObjectPointerPersonality];
     FindMoreTiles(root.view, frames, visited, &remaining);
+#if LARPBLOX_DIAGNOSTICS
+    diagnostic.hidden = NO;
+    [diagnostic setTitle:[NSString stringWithFormat:@"LB loaded · %lu/3", (unsigned long)frames.count]
+                forState:UIControlStateNormal];
+#endif
     if (frames.count != 3) { tile.hidden = YES; return; }
 
     CGRect quick = [window convertRect:frames[@"quicksignin"].CGRectValue
@@ -294,6 +331,7 @@ __attribute__((constructor)) static void InstallLarpOverlay(void) {
         }
     });
 }
+
 
 
 

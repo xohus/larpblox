@@ -7,18 +7,23 @@ permissions:
   contents: read
 jobs:
   build:
+    strategy:
+      matrix:
+        variant: [overlay, diagnostics]
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - name: Compile arm64 iOS overlay
         run: |
           mkdir -p dist
-          xcrun --sdk iphoneos clang -arch arm64 -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" -miphoneos-version-min=14.0 -fobjc-arc -dynamiclib -framework CoreGraphics -framework QuartzCore -framework UIKit -framework WebKit -install_name @rpath/LarpOverlay.dylib LarpOverlay.m -o dist/LarpOverlay.dylib
+          flags=()
+          if [[ "${{ matrix.variant }}" == diagnostics ]]; then flags+=(-DLARPBLOX_DIAGNOSTICS=1); fi
+          xcrun --sdk iphoneos clang "${flags[@]}" -arch arm64 -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" -miphoneos-version-min=14.0 -fobjc-arc -dynamiclib -framework CoreGraphics -framework QuartzCore -framework UIKit -framework WebKit -install_name @rpath/LarpOverlay.dylib LarpOverlay.m -o dist/LarpOverlay.dylib
           codesign --force --sign - dist/LarpOverlay.dylib
           codesign --verify --strict dist/LarpOverlay.dylib
           cp LarpConsole.html dist/
       - uses: actions/upload-artifact@v4
         with:
-          name: larpblox-overlay
+          name: larpblox-${{ matrix.variant }}
           path: dist/
           if-no-files-found: error
