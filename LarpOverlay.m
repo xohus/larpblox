@@ -72,7 +72,24 @@ static UIImage *MoreMascot(void) {
     return [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
 }
 
+#if LARPBLOX_DIAGNOSTICS
+@interface LarpDiagnosticWindow : UIWindow
+@end
+
+@implementation LarpDiagnosticWindow
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    UIView *hit = [super hitTest:point withEvent:event];
+    return hit == self || hit == self.rootViewController.view ? nil : hit;
+}
+@end
+#endif
+
 @interface LarpOverlay : NSObject <UIGestureRecognizerDelegate>
+@property(nonatomic,strong) UIWindow *consoleWindow;
+@property(nonatomic,weak) UIWindow *previousKeyWindow;
+#if LARPBLOX_DIAGNOSTICS
+@property(nonatomic,strong) LarpDiagnosticWindow *diagnosticWindow;
+#endif
 - (void)addSettingsEntry:(UIViewController *)settings;
 - (void)openFromWindow:(UIWindow *)window;
 - (void)refreshMoreTileInWindow:(UIWindow *)window;
@@ -101,11 +118,10 @@ static UIImage *MoreMascot(void) {
 }
 
 - (void)close:(UIButton *)sender {
-    UIViewController *menu = sender.window.rootViewController;
-    while (menu.presentedViewController) menu = menu.presentedViewController;
-    if ([menu.view.accessibilityIdentifier isEqualToString:@"LarpOverlay"]) {
-        [menu dismissViewControllerAnimated:YES completion:nil];
-    }
+    self.consoleWindow.hidden = YES;
+    self.consoleWindow = nil;
+    [self.previousKeyWindow makeKeyWindow];
+    self.previousKeyWindow = nil;
 }
 
 - (void)open:(UISwipeGestureRecognizer *)gesture {
@@ -113,11 +129,22 @@ static UIImage *MoreMascot(void) {
 }
 
 - (void)openFromSettings:(UIButton *)button {
-    [self openFromWindow:button.window];
+    UIWindow *window = button.window;
+#if LARPBLOX_DIAGNOSTICS
+    if (window == self.diagnosticWindow) {
+        for (UIWindow *candidate in window.windowScene.windows) {
+            if (candidate.isKeyWindow && candidate != window) {
+                window = candidate;
+                break;
+            }
+        }
+    }
+#endif
+    [self openFromWindow:window];
 }
 
 - (void)refreshMoreTiles:(NSTimer *)timer {
-    if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
+    if (self.consoleWindow || UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
     for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
         if (![scene isKindOfClass:UIWindowScene.class] ||
             scene.activationState != UISceneActivationStateForegroundActive) continue;
@@ -130,7 +157,16 @@ static UIImage *MoreMascot(void) {
 #if LARPBLOX_DIAGNOSTICS
 - (UIButton *)diagnosticButtonInWindow:(UIWindow *)window {
     static const NSInteger diagnosticTag = 0x4C425844;
-    UIButton *button = (UIButton *)[window viewWithTag:diagnosticTag];
+    if (self.diagnosticWindow.windowScene != window.windowScene) {
+        self.diagnosticWindow.hidden = YES;
+        self.diagnosticWindow = [[LarpDiagnosticWindow alloc] initWithWindowScene:window.windowScene];
+        self.diagnosticWindow.windowLevel = UIWindowLevelNormal + 1;
+        self.diagnosticWindow.rootViewController = [UIViewController new];
+        self.diagnosticWindow.rootViewController.view.backgroundColor = UIColor.clearColor;
+        self.diagnosticWindow.hidden = NO;
+    }
+    UIView *host = self.diagnosticWindow.rootViewController.view;
+    UIButton *button = (UIButton *)[host viewWithTag:diagnosticTag];
     if (!button) {
         button = [UIButton buttonWithType:UIButtonTypeSystem];
         button.tag = diagnosticTag;
@@ -140,15 +176,15 @@ static UIImage *MoreMascot(void) {
         button.titleLabel.font = [UIFont monospacedSystemFontOfSize:13 weight:UIFontWeightSemibold];
         [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
         [button addTarget:self action:@selector(openFromSettings:) forControlEvents:UIControlEventTouchUpInside];
-        [window addSubview:button];
+        [host addSubview:button];
         [NSLayoutConstraint activateConstraints:@[
-            [button.topAnchor constraintEqualToAnchor:window.safeAreaLayoutGuide.topAnchor constant:8],
-            [button.centerXAnchor constraintEqualToAnchor:window.centerXAnchor],
+            [button.topAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.topAnchor constant:8],
+            [button.centerXAnchor constraintEqualToAnchor:host.centerXAnchor],
             [button.heightAnchor constraintEqualToConstant:44],
             [button.widthAnchor constraintEqualToConstant:174]
         ]];
     }
-    [window bringSubviewToFront:button];
+    [host bringSubviewToFront:button];
     return button;
 }
 #endif
@@ -260,9 +296,7 @@ static UIImage *MoreMascot(void) {
 }
 
 - (void)openFromWindow:(UIWindow *)window {
-    UIViewController *presenter = window.rootViewController;
-    while (presenter.presentedViewController) presenter = presenter.presentedViewController;
-    if (!presenter || [presenter.view.accessibilityIdentifier isEqualToString:@"LarpOverlay"]) return;
+    if (self.consoleWindow || !window.windowScene) return;
 
     NSURL *file = [NSBundle.mainBundle URLForResource:@"LarpConsole" withExtension:@"html"];
     if (!file) return;
@@ -290,7 +324,12 @@ static UIImage *MoreMascot(void) {
         [close.heightAnchor constraintEqualToConstant:44]
     ]];
     [web loadFileURL:file allowingReadAccessToURL:file];
-    [presenter presentViewController:menu animated:YES completion:nil];
+    UIWindow *consoleWindow = [[UIWindow alloc] initWithWindowScene:window.windowScene];
+    consoleWindow.windowLevel = UIWindowLevelNormal + 2;
+    consoleWindow.rootViewController = menu;
+    self.previousKeyWindow = window;
+    self.consoleWindow = consoleWindow;
+    [consoleWindow makeKeyAndVisible];
 }
 @end
 
@@ -331,6 +370,7 @@ __attribute__((constructor)) static void InstallLarpOverlay(void) {
         }
     });
 }
+
 
 
 
