@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "LarpBlox",
+  "version": "0.1.0",
+  "action": {
+    "default_title": "Open LarpBlox"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
