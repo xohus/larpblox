@@ -1,9 +1,11 @@
 #import <UIKit/UIKit.h>
 #import <WebKit/WebKit.h>
 #import <objc/runtime.h>
+#import <QuartzCore/QuartzCore.h>
 
 @interface LarpOverlay : NSObject <UIGestureRecognizerDelegate>
 - (void)addSettingsEntry:(UIViewController *)settings;
+- (void)openFromWindow:(UIWindow *)window;
 @end
 
 @implementation LarpOverlay
@@ -137,6 +139,7 @@ __attribute__((constructor)) static void InstallLarpOverlay(void) {
         }
     });
 }
+
 
 
 
