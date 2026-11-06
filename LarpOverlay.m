@@ -3,9 +3,79 @@
 #import <objc/runtime.h>
 #import <QuartzCore/QuartzCore.h>
 
+static NSString *MoreTileKey(NSString *label) {
+    if (![label isKindOfClass:NSString.class]) return @"";
+    return [[[label lowercaseString] componentsSeparatedByCharactersInSet:
+        NSCharacterSet.alphanumericCharacterSet.invertedSet] componentsJoinedByString:@""];
+}
+
+static void FindMoreTiles(id node, NSMutableDictionary<NSString *, NSValue *> *frames,
+                          NSHashTable *visited, NSUInteger *remaining) {
+    if (!node || !*remaining || [visited containsObject:node] || frames.count == 3) return;
+    (*remaining)--;
+    [visited addObject:node];
+
+    if ([node isKindOfClass:UIView.class]) {
+        UIView *view = node;
+        if (view.hidden || view.alpha < 0.01) return;
+    }
+    NSString *key = MoreTileKey([node accessibilityLabel]);
+    if ([key isEqualToString:@"quicklogin"]) key = @"quicksignin";
+    if ([@[@"quicksignin", @"helpsafety", @"learn"] containsObject:key]) {
+        CGRect frame = [node accessibilityFrame];
+        if (!CGRectIsEmpty(frame) && !CGRectIsInfinite(frame)) {
+            frames[key] = [NSValue valueWithCGRect:frame];
+        }
+    }
+    for (id child in [node accessibilityElements]) {
+        if (!*remaining || frames.count == 3) break;
+        FindMoreTiles(child, frames, visited, remaining);
+    }
+    if ([node isKindOfClass:UIView.class]) {
+        for (UIView *child in [(UIView *)node subviews]) {
+            if (!*remaining || frames.count == 3) break;
+            FindMoreTiles(child, frames, visited, remaining);
+        }
+    }
+    if (![node accessibilityElements] && [node respondsToSelector:@selector(accessibilityElementCount)]) {
+        NSInteger count = MIN([node accessibilityElementCount], 180);
+        for (NSInteger index = 0; index < count && *remaining && frames.count < 3; index++) {
+            FindMoreTiles([node accessibilityElementAtIndex:index], frames, visited, remaining);
+        }
+    }
+}
+
+static UIImage *MoreMascot(void) {
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(40, 40)];
+    UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
+        [UIColor.blackColor setStroke];
+        [UIColor.blackColor setFill];
+        UIBezierPath *cube = [UIBezierPath bezierPath];
+        [cube moveToPoint:CGPointMake(4, 12)];
+        [cube addLineToPoint:CGPointMake(15, 5)];
+        [cube addLineToPoint:CGPointMake(33, 9)];
+        [cube addLineToPoint:CGPointMake(36, 29)];
+        [cube addLineToPoint:CGPointMake(26, 36)];
+        [cube addLineToPoint:CGPointMake(6, 32)];
+        [cube closePath];
+        [cube moveToPoint:CGPointMake(4, 12)];
+        [cube addLineToPoint:CGPointMake(24, 16)];
+        [cube addLineToPoint:CGPointMake(33, 9)];
+        [cube moveToPoint:CGPointMake(24, 16)];
+        [cube addLineToPoint:CGPointMake(26, 36)];
+        cube.lineWidth = 2;
+        cube.lineJoinStyle = kCGLineJoinRound;
+        [cube stroke];
+        [[UIBezierPath bezierPathWithRoundedRect:CGRectMake(9, 18, 4, 6) cornerRadius:1] fill];
+        [[UIBezierPath bezierPathWithRoundedRect:CGRectMake(17, 20, 4, 6) cornerRadius:1] fill];
+    }];
+    return [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+}
+
 @interface LarpOverlay : NSObject <UIGestureRecognizerDelegate>
 - (void)addSettingsEntry:(UIViewController *)settings;
 - (void)openFromWindow:(UIWindow *)window;
+- (void)refreshMoreTileInWindow:(UIWindow *)window;
 @end
 
 @implementation LarpOverlay
@@ -44,6 +114,85 @@
 
 - (void)openFromSettings:(UIButton *)button {
     [self openFromWindow:button.window];
+}
+
+- (void)refreshMoreTiles:(NSTimer *)timer {
+    if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive) return;
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if (![scene isKindOfClass:UIWindowScene.class] ||
+            scene.activationState != UISceneActivationStateForegroundActive) continue;
+        for (UIWindow *window in ((UIWindowScene *)scene).windows) {
+            if (window.isKeyWindow) [self refreshMoreTileInWindow:window];
+        }
+    }
+}
+
+- (void)refreshMoreTileInWindow:(UIWindow *)window {
+    static const NSInteger tileTag = 0x4C425854;
+    UIButton *tile = (UIButton *)[window viewWithTag:tileTag];
+    UIViewController *root = window.rootViewController;
+    if (!root || root.presentedViewController) { tile.hidden = YES; return; }
+
+    NSMutableDictionary<NSString *, NSValue *> *frames = [NSMutableDictionary dictionary];
+    NSUInteger remaining = 2400;
+    NSHashTable *visited = [NSHashTable hashTableWithOptions:NSPointerFunctionsObjectPointerPersonality];
+    FindMoreTiles(root.view, frames, visited, &remaining);
+    if (frames.count != 3) { tile.hidden = YES; return; }
+
+    CGRect quick = [window convertRect:frames[@"quicksignin"].CGRectValue
+                   fromCoordinateSpace:window.screen.coordinateSpace];
+    CGRect help = [window convertRect:frames[@"helpsafety"].CGRectValue
+                  fromCoordinateSpace:window.screen.coordinateSpace];
+    CGRect learn = [window convertRect:frames[@"learn"].CGRectValue
+                   fromCoordinateSpace:window.screen.coordinateSpace];
+    CGFloat pitch = CGRectGetMidX(quick) - CGRectGetMidX(help);
+    CGFloat rowPitch = CGRectGetMidY(quick) - CGRectGetMidY(learn);
+    if (pitch < 65 || rowPitch < 65 ||
+        fabs(CGRectGetMidY(quick) - CGRectGetMidY(help)) > 12 ||
+        fabs(CGRectGetMidX(learn) - CGRectGetMidX(quick) - pitch) > 20) {
+        tile.hidden = YES;
+        return;
+    }
+
+    CGFloat side = MIN(pitch, rowPitch) * 0.875;
+    CGFloat centerY = CGRectGetMidY(quick);
+    if (CGRectGetHeight(quick) < side * 0.6) centerY -= side * 0.18;
+    CGRect frame = CGRectMake(CGRectGetMidX(learn) - side / 2, centerY - side / 2, side, side);
+    if (!CGRectContainsRect(UIEdgeInsetsInsetRect(window.bounds, window.safeAreaInsets), frame)) {
+        tile.hidden = YES;
+        return;
+    }
+
+    if (!tile) {
+        tile = [UIButton buttonWithType:UIButtonTypeSystem];
+        tile.tag = tileTag;
+        tile.accessibilityLabel = @"LarpBlox";
+        tile.layer.cornerRadius = 9;
+        [tile addTarget:self action:@selector(openFromSettings:) forControlEvents:UIControlEventTouchUpInside];
+        UIImageView *icon = [[UIImageView alloc] initWithImage:MoreMascot()];
+        icon.tag = 1;
+        icon.contentMode = UIViewContentModeScaleAspectFit;
+        UILabel *label = [UILabel new];
+        label.tag = 2;
+        label.text = @"LarpBlox";
+        label.textAlignment = NSTextAlignmentCenter;
+        [tile addSubview:icon];
+        [tile addSubview:label];
+        [window addSubview:tile];
+    }
+    BOOL dark = window.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    tile.frame = frame;
+    tile.backgroundColor = dark ? [UIColor colorWithWhite:0.14 alpha:1] : [UIColor colorWithWhite:0.96 alpha:1];
+    UIImageView *icon = (UIImageView *)[tile viewWithTag:1];
+    CGFloat iconSize = side * 0.28;
+    icon.frame = CGRectMake((side - iconSize) / 2, side * 0.25, iconSize, iconSize);
+    icon.tintColor = dark ? UIColor.whiteColor : UIColor.blackColor;
+    UILabel *label = (UILabel *)[tile viewWithTag:2];
+    label.frame = CGRectMake(0, side * 0.60, side, side * 0.16);
+    label.font = [UIFont systemFontOfSize:MIN(18, side * 0.10) weight:UIFontWeightSemibold];
+    label.textColor = dark ? UIColor.whiteColor : UIColor.blackColor;
+    tile.hidden = NO;
+    [window bringSubviewToFront:tile];
 }
 
 - (void)addSettingsEntry:(UIViewController *)settings {
@@ -126,6 +275,8 @@ __attribute__((constructor)) static void InstallLarpOverlay(void) {
         static LarpOverlay *overlay;
         overlay = [LarpOverlay new];
         InstallSettingsEntry(overlay);
+        [NSTimer scheduledTimerWithTimeInterval:0.35 target:overlay
+            selector:@selector(refreshMoreTiles:) userInfo:nil repeats:YES];
         [NSNotificationCenter.defaultCenter addObserver:overlay
             selector:@selector(attachToWindow:) name:UIWindowDidBecomeKeyNotification object:nil];
         for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
@@ -139,6 +290,7 @@ __attribute__((constructor)) static void InstallLarpOverlay(void) {
         }
     });
 }
+
 
 
 
