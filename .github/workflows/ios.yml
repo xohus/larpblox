@@ -14,6 +14,8 @@ jobs:
         run: |
           mkdir -p dist
           xcrun --sdk iphoneos clang -arch arm64 -isysroot "$(xcrun --sdk iphoneos --show-sdk-path)" -miphoneos-version-min=14.0 -fobjc-arc -dynamiclib -framework CoreGraphics -framework QuartzCore -framework UIKit -framework WebKit -install_name @rpath/LarpOverlay.dylib LarpOverlay.m -o dist/LarpOverlay.dylib
+          codesign --force --sign - dist/LarpOverlay.dylib
+          codesign --verify --strict dist/LarpOverlay.dylib
           cp LarpConsole.html dist/
       - uses: actions/upload-artifact@v4
         with:

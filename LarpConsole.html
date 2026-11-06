@@ -92,6 +92,18 @@ nav button:focus-visible{outline:2px solid var(--accent)}
 .toast.show{transform:translate(-50%,0)}.toast.err{border-color:var(--bad)}
 @keyframes in{from{opacity:0;transform:translateY(-3px)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (min-width:600px){
+  main{max-width:840px;padding-inline:max(24px,env(safe-area-inset-left)) max(24px,env(safe-area-inset-right))}
+  nav .in{max-width:840px}
+  section{padding:24px}
+  .stats,.row2{gap:14px}
+}
+@media (min-width:950px){
+  main{max-width:1180px;display:grid;grid-template-columns:260px minmax(0,1fr);gap:24px;align-items:start}
+  main>.guide{grid-column:1;margin:0;position:sticky;top:24px}
+  main>section{grid-column:2;grid-row:1;margin-top:0}
+  nav .in{max-width:1180px}
+}
 </style></head>
 <body>
 <main>
@@ -317,3 +329,4 @@ bind('trades',t=>{const ok=add('trades',t);if(ok){toast('Trade saved');blox.reac
 selectTab(tabs[0]);render();
 </script>
 </body></html>
+
