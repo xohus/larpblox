@@ -131,7 +131,11 @@ static UIImage *MoreMascot(void) {
     static const NSInteger tileTag = 0x4C425854;
     UIButton *tile = (UIButton *)[window viewWithTag:tileTag];
     UIViewController *root = window.rootViewController;
-    if (!root || root.presentedViewController) { tile.hidden = YES; return; }
+    while (root.presentedViewController) root = root.presentedViewController;
+    if (!root || [root.view.accessibilityIdentifier isEqualToString:@"LarpOverlay"]) {
+        tile.hidden = YES;
+        return;
+    }
 
     NSMutableDictionary<NSString *, NSValue *> *frames = [NSMutableDictionary dictionary];
     NSUInteger remaining = 2400;
@@ -290,6 +294,7 @@ __attribute__((constructor)) static void InstallLarpOverlay(void) {
         }
     });
 }
+
 
 
 
